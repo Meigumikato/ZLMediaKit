@@ -40,7 +40,7 @@ INCLUDE_DIRECTORIES(${ToolKit_Root})
 INCLUDE_DIRECTORIES(${MediaKit_Root})
 
 set(ENABLE_HLS true)
-set(ENABLE_OPENSSL true)
+set(ENABLE_OPENSSL false)
 set(ENABLE_MYSQL false)
 set(ENABLE_MP4V2 true)
 set(ENABLE_FAAC false)
