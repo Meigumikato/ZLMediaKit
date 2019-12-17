@@ -39,7 +39,7 @@ const char kLog[] = FFmpeg_FIELD"log";
 
 onceToken token([]() {
     mINI::Instance()[kBin] = trim(System::execute("which ffmpeg"));
-    mINI::Instance()[kCmd] = "%s -re -i %s -c:a aac -strict -2 -ar 44100 -ab 48k -c:v libx264 -f flv %s";
+    mINI::Instance()[kCmd] = "%s -re -i %s -c:a aac -strict -2 -ar 44100 -ab 48k -c:v copy -f flv %s";
     mINI::Instance()[kCmdConvert] = "%s -re -rtsp_transport tcp -i %s -vcodec libx264 -vprofile baseline -acodec aac -ar 44100 -strict -2 -ac 1 -f flv %s";
     mINI::Instance()[kLog] = "./ffmpeg/ffmpeg.log";
 });
