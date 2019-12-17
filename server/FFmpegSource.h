@@ -51,10 +51,10 @@ public:
      * @param cb
      */
     void setOnClose(const function<void()> &cb);
-    void play(const string &src_url,const string &dst_url,int timeout_ms,const onPlay &cb);
+    void play(const string &src_url,const string &dst_url,int timeout_ms, bool needConvert, const onPlay &cb);
 private:
     void findAsync(int maxWaitMS ,const function<void(const MediaSource::Ptr &src)> &cb);
-    void startTimer(int timeout_ms);
+    void startTimer(int timeout_ms, bool needConvert);
     void onGetMediaSource(const MediaSource::Ptr &src);
 
     bool close(MediaSource &sender,bool force) override;

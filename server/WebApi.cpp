@@ -563,7 +563,7 @@ void installWebApi() {
         //添加拉流代理
         PlayerProxy::Ptr player(new PlayerProxy(vhost,app,stream,enable_rtsp,enable_rtmp,enable_hls,enable_mp4));
         s_proxyMap[key] = player;
-        
+
         //指定RTP over TCP(播放rtsp时有效)
         (*player)[kRtpType] = rtp_type;
         //开始播放，如果播放失败或者播放中止，将会自动重试若干次，默认一直重试
@@ -621,6 +621,7 @@ void installWebApi() {
     static auto addFFmpegSource = [](const string &src_url,
                                      const string &dst_url,
                                      int timeout_ms,
+                                     bool needConvert,
                                      const function<void(const SockException &ex,const string &key)> &cb){
         auto key = MD5(dst_url).hexdigest();
         lock_guard<decltype(s_ffmpegMapMtx)> lck(s_ffmpegMapMtx);
@@ -637,7 +638,7 @@ void installWebApi() {
             lock_guard<decltype(s_ffmpegMapMtx)> lck(s_ffmpegMapMtx);
             s_ffmpegMap.erase(key);
         });
-        ffmpeg->play(src_url, dst_url,timeout_ms,[cb , key](const SockException &ex){
+        ffmpeg->play(src_url, dst_url,timeout_ms, needConvert, [cb , key](const SockException &ex){
             if(ex){
                 lock_guard<decltype(s_ffmpegMapMtx)> lck(s_ffmpegMapMtx);
                 s_ffmpegMap.erase(key);
@@ -650,12 +651,13 @@ void installWebApi() {
     //测试url http://127.0.0.1/index/api/addFFmpegSource?src_url=http://live.hkstv.hk.lxdns.com/live/hks2/playlist.m3u8&dst_url=rtmp://127.0.0.1/live/hks2&timeout_ms=10000
     API_REGIST_INVOKER(api,addFFmpegSource,{
         CHECK_SECRET();
-        CHECK_ARGS("src_url","dst_url","timeout_ms");
+        CHECK_ARGS("src_url","dst_url","timeout_ms", "need_convert");
         auto src_url = allArgs["src_url"];
         auto dst_url = allArgs["dst_url"];
         int timeout_ms = allArgs["timeout_ms"];
+        bool needConvert = allArgs["need_convert"];
 
-        addFFmpegSource(src_url,dst_url,timeout_ms,[invoker,val,headerOut](const SockException &ex,const string &key){
+        addFFmpegSource(src_url,dst_url,timeout_ms, needConvert, [invoker,val,headerOut](const SockException &ex,const string &key){
             if(ex){
                 const_cast<Value &>(val)["code"] = API::OtherFailed;
                 const_cast<Value &>(val)["msg"] = ex.what();
@@ -808,6 +810,7 @@ void installWebApi() {
         addFFmpegSource("http://live.hkstv.hk.lxdns.com/live/hks2/playlist.m3u8",/** ffmpeg拉流支持任意编码格式任意协议 **/
                         dst_url,
                         (1000 * timeout_sec) - 500,
+                        false,
                         [invoker,val,headerOut](const SockException &ex,const string &key){
                             if(ex){
                                 const_cast<Value &>(val)["code"] = API::OtherFailed;

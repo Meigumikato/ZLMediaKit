@@ -34,11 +34,13 @@ namespace FFmpeg {
 #define FFmpeg_FIELD "ffmpeg."
 const char kBin[] = FFmpeg_FIELD"bin";
 const char kCmd[] = FFmpeg_FIELD"cmd";
+const char kCmdConvert[] = FFmpeg_FIELD"cmd";
 const char kLog[] = FFmpeg_FIELD"log";
 
 onceToken token([]() {
     mINI::Instance()[kBin] = trim(System::execute("which ffmpeg"));
     mINI::Instance()[kCmd] = "%s -re -i %s -c:a aac -strict -2 -ar 44100 -ab 48k -c:v libx264 -f flv %s";
+    mINI::Instance()[kCmdConvert] = "%s -re -rtsp_transport tcp -i %s -vcodec libx264 -vprofile baseline -acodec aac -ar 44100 -strict -2 -ac 1 -f flv %s";
     mINI::Instance()[kLog] = "./ffmpeg/ffmpeg.log";
 });
 }
@@ -52,9 +54,10 @@ FFmpegSource::~FFmpegSource() {
 }
 
 
-void FFmpegSource::play(const string &src_url,const string &dst_url,int timeout_ms,const onPlay &cb) {
+void FFmpegSource::play(const string &src_url,const string &dst_url,int timeout_ms, bool needConvert, const onPlay &cb) {
     GET_CONFIG(string,ffmpeg_bin,FFmpeg::kBin);
     GET_CONFIG(string,ffmpeg_cmd,FFmpeg::kCmd);
+    GET_CONFIG(string,ffmpeg_cmd_convert,FFmpeg::kCmdConvert);
     GET_CONFIG(string,ffmpeg_log,FFmpeg::kLog);
 
     _src_url = src_url;
@@ -62,7 +65,11 @@ void FFmpegSource::play(const string &src_url,const string &dst_url,int timeout_
     _media_info.parse(dst_url);
 
     char cmd[1024] = {0};
-    snprintf(cmd, sizeof(cmd),ffmpeg_cmd.data(),ffmpeg_bin.data(),src_url.data(),dst_url.data());
+    if(needConvert) {
+        snprintf(cmd, sizeof(cmd),ffmpeg_cmd_convert.data(),ffmpeg_bin.data(),src_url.data(),dst_url.data());
+    } else {
+        snprintf(cmd, sizeof(cmd),ffmpeg_cmd.data(),ffmpeg_bin.data(),src_url.data(),dst_url.data());
+    }
     _process.run(cmd,File::absolutePath("",ffmpeg_log));
     InfoL << cmd;
 
@@ -73,7 +80,7 @@ void FFmpegSource::play(const string &src_url,const string &dst_url,int timeout_
             return;
         }
         weak_ptr<FFmpegSource> weakSelf = shared_from_this();
-        findAsync(timeout_ms,[cb,weakSelf,timeout_ms](const MediaSource::Ptr &src){
+        findAsync(timeout_ms,[cb,weakSelf,timeout_ms, needConvert](const MediaSource::Ptr &src){
             auto strongSelf = weakSelf.lock();
             if(!strongSelf){
                 //自己已经销毁
@@ -83,7 +90,7 @@ void FFmpegSource::play(const string &src_url,const string &dst_url,int timeout_
                 //推流给自己成功
                 cb(SockException());
                 strongSelf->onGetMediaSource(src);
-                strongSelf->startTimer(timeout_ms);
+                strongSelf->startTimer(timeout_ms, needConvert);
                 return;
             }
             //推流失败
@@ -98,7 +105,7 @@ void FFmpegSource::play(const string &src_url,const string &dst_url,int timeout_
     } else{
         //推流给其他服务器的，通过判断FFmpeg进程是否在线判断是否成功
         weak_ptr<FFmpegSource> weakSelf = shared_from_this();
-        _timer = std::make_shared<Timer>(timeout_ms / 1000,[weakSelf,cb,timeout_ms](){
+        _timer = std::make_shared<Timer>(timeout_ms / 1000,[weakSelf,cb,timeout_ms, needConvert](){
             auto strongSelf = weakSelf.lock();
             if(!strongSelf){
                 //自身已经销毁
@@ -107,7 +114,7 @@ void FFmpegSource::play(const string &src_url,const string &dst_url,int timeout_
             //FFmpeg还在线，那么我们认为推流成功
             if(strongSelf->_process.wait(false)){
                 cb(SockException());
-                strongSelf->startTimer(timeout_ms);
+                strongSelf->startTimer(timeout_ms, needConvert);
                 return false;
             }
             //ffmpeg进程已经退出
@@ -178,9 +185,12 @@ void FFmpegSource::findAsync(int maxWaitMS, const function<void(const MediaSourc
 /**
  * 定时检查媒体是否在线
  */
-void FFmpegSource::startTimer(int timeout_ms) {
+void FFmpegSource::startTimer(int timeout_ms, bool needConvert) {
     weak_ptr<FFmpegSource> weakSelf = shared_from_this();
-    _timer = std::make_shared<Timer>(1, [weakSelf, timeout_ms]() {
+    /**
+     * 这里修改成等待一定的延迟，避免时间出现业务死循环
+     */
+    _timer = std::make_shared<Timer>(timeout_ms / 1000 + 5, [weakSelf, timeout_ms, needConvert]() {
         auto strongSelf = weakSelf.lock();
         if (!strongSelf) {
             //自身已经销毁
@@ -192,14 +202,14 @@ void FFmpegSource::startTimer(int timeout_ms) {
                 //同步查找流
                 if (!src) {
                     //流不在线，重新拉流
-                    strongSelf->play(strongSelf->_src_url, strongSelf->_dst_url, timeout_ms, [](const SockException &) {});
+                    strongSelf->play(strongSelf->_src_url, strongSelf->_dst_url, timeout_ms, needConvert, [](const SockException &) {});
                 }
             });
         } else {
             //推流给其他服务器的，我们通过判断FFmpeg进程是否在线，如果FFmpeg推流中断，那么它应该会自动退出
             if (!strongSelf->_process.wait(false)) {
                 //ffmpeg不在线，重新拉流
-                strongSelf->play(strongSelf->_src_url, strongSelf->_dst_url, timeout_ms, [](const SockException &) {});
+                strongSelf->play(strongSelf->_src_url, strongSelf->_dst_url, timeout_ms, needConvert, [](const SockException &) {});
             }
         }
         return true;
