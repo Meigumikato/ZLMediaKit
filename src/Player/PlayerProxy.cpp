@@ -276,6 +276,10 @@ void PlayerProxy::onPlaySuccess() {
 		//MuteAudioMaker生成静音音频然后写入_mediaMuxer；
 		audioMaker->addDelegate(_mediaMuxer);
 	}
+
+    if(_pMediaSrc){
+        _pMediaSrc->setTrackSource(_mediaMuxer);
+    }
 }
 
 
