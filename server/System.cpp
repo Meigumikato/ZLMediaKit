@@ -328,7 +328,15 @@ void System::startDaemon() {
         do{
             int status = 0;
             if(waitpid(pid, &status, 0) >= 0) {
-                WarnL << "子进程退出";
+                /**
+                 * 错误退出或者正常退出
+                 */
+                if(WIFEXITED(status)) {
+                    WarnL << "发生错误，被动退出";
+                    kill(pid,SIGINT);
+                    exit(0);
+                }
+                WarnL << "子进程退出 : " << _WSTATUS(status);
                 //休眠1秒再启动子进程
                 sleep(1);
                 break;

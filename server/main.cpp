@@ -47,6 +47,10 @@
 #include "WebHook.h"
 
 #if !defined(_WIN32)
+#include<unistd.h>
+#endif
+
+#if !defined(_WIN32)
 #include "System.h"
 #endif//!defined(_WIN32)
 
@@ -242,6 +246,9 @@ int start_main(int argc,char *argv[]) {
         pid_t pid = getpid();
         if (bDaemon) {
             //启动守护进程
+            if(bDaemon) {
+                daemon(1, 1);
+            }
             System::startDaemon();
         }
         //开启崩溃捕获等
