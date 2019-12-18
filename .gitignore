@@ -38,3 +38,5 @@
 /build/
 /linux_build/
 /release/
+/mac_build/
+build

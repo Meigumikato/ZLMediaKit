@@ -40,7 +40,7 @@ INCLUDE_DIRECTORIES(${ToolKit_Root})
 INCLUDE_DIRECTORIES(${MediaKit_Root})
 
 set(ENABLE_HLS true)
-set(ENABLE_OPENSSL true)
+set(ENABLE_OPENSSL false)
 set(ENABLE_MYSQL false)
 set(ENABLE_MP4V2 true)
 set(ENABLE_FAAC false)
@@ -186,6 +186,9 @@ if (WIN32)
 elseif(NOT ANDROID OR IOS)
     list(APPEND LINK_LIB_LIST pthread)
 endif ()
+
+#添加c库
+add_subdirectory(api)
 
 if (NOT IOS)
     #测试程序
