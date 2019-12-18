@@ -52,6 +52,8 @@ public:
      */
     void setOnClose(const function<void()> &cb);
     void play(const string &src_url,const string &dst_url,int timeout_ms, bool needConvert, const onPlay &cb);
+    string getSrc();
+    string getDst();
 private:
     void findAsync(int maxWaitMS ,const function<void(const MediaSource::Ptr &src)> &cb);
     void startTimer(int timeout_ms, bool needConvert);

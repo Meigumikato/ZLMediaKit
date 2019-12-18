@@ -702,7 +702,11 @@ void installWebApi() {
         for(std::map<std::string, FFmpegSource::Ptr>::iterator it = s_ffmpegMap.begin(); it != s_ffmpegMap.end();++it)
         {
             std::string key =  it->first;
-            val["data"]["list"].append(key);
+            Value item;
+            item["key"] = key;
+            item["dst"] = it->second->getDst();
+            item["src"] = it->second->getSrc();
+            val["data"]["list"].append(item);
         }
         invoker("200 OK", headerOut, val.toStyledString());
     });

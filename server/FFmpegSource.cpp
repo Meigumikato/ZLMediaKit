@@ -246,3 +246,11 @@ void FFmpegSource::onGetMediaSource(const MediaSource::Ptr &src) {
     _listener = src->getListener();
     src->setListener(shared_from_this());
 }
+
+string FFmpegSource::getSrc() {
+    return _src_url;
+}
+
+string FFmpegSource::getDst() {
+    return _dst_url;
+}
