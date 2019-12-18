@@ -66,10 +66,8 @@ void FFmpegSource::play(const string &src_url,const string &dst_url,int timeout_
 
     char cmd[1024] = {0};
     if(needConvert) {
-        printf("%s \n", "fuck 12121212 00000000000");
         snprintf(cmd, sizeof(cmd),ffmpeg_cmd_convert.data(),ffmpeg_bin.data(),src_url.data(),dst_url.data());
     } else {
-        printf("%s \n", "fuck 12121212 000000000001111111111111111111111");
         snprintf(cmd, sizeof(cmd),ffmpeg_cmd.data(),ffmpeg_bin.data(),src_url.data(),dst_url.data());
     }
     _process.run(cmd,File::absolutePath("",ffmpeg_log));
