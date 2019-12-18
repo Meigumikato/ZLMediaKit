@@ -34,7 +34,7 @@ namespace FFmpeg {
 #define FFmpeg_FIELD "ffmpeg."
 const char kBin[] = FFmpeg_FIELD"bin";
 const char kCmd[] = FFmpeg_FIELD"cmd";
-const char kCmdConvert[] = FFmpeg_FIELD"cmd";
+const char kCmdConvert[] = FFmpeg_FIELD"cmd_convert";
 const char kLog[] = FFmpeg_FIELD"log";
 
 onceToken token([]() {
