@@ -270,7 +270,7 @@ static inline string getProxyKey(const string &vhost,const string &app,const str
 }
 
 #if !defined(_WIN32)
-static unordered_map<string ,FFmpegSource::Ptr> s_ffmpegMap;
+static map<string ,FFmpegSource::Ptr> s_ffmpegMap;
 static recursive_mutex s_ffmpegMapMtx;
 #endif//#if !defined(_WIN32)
 
@@ -694,6 +694,17 @@ void installWebApi() {
             }
             invoker("200 OK", headerOut, val.toStyledString());
         });
+    });
+
+    API_REGIST_INVOKER(api, getFFmpegSourceList, {
+        CHECK_SECRET();
+        lock_guard<decltype(s_ffmpegMapMtx)> lck(s_ffmpegMapMtx);
+        for(std::map<std::string, FFmpegSource::Ptr>::iterator it = s_ffmpegMap.begin(); it != s_ffmpegMap.end();++it)
+        {
+            std::string key =  it->first;
+            val["data"]["list"].append(key);
+        }
+        invoker("200 OK", headerOut, val.toStyledString());
     });
 
 
