@@ -1,4 +1,4 @@
-/*
+﻿/*
  * MIT License
  *
  * Copyright (c) 2019 xiongziliang <771730766@qq.com>
@@ -43,11 +43,20 @@ static TcpServer::Ptr rtsp_server[2];
 static TcpServer::Ptr rtmp_server[2];
 static TcpServer::Ptr http_server[2];
 
+#ifdef ENABLE_RTPPROXY
+#include "Rtp/UdpRecver.h"
+#include "Rtp/RtpSession.h"
+static std::shared_ptr<UdpRecver> udpRtpServer;
+static TcpServer::Ptr tcpRtpServer(new TcpServer());
+#endif
+
 //////////////////////////environment init///////////////////////////
 API_EXPORT void API_CALL mk_env_init(const config *cfg) {
-    assert(cfg != nullptr);
+    assert(cfg);
     static onceToken token([&]() {
         Logger::Instance().add(std::make_shared<ConsoleChannel>("console", (LogLevel) cfg->log_level));
+        Logger::Instance().setWriter(std::make_shared<AsyncLogWriter>());
+
         EventPollerPool::setPoolSize(cfg->thread_num);
         WorkThreadPool::setPoolSize(cfg->thread_num);
 
@@ -68,6 +77,7 @@ API_EXPORT void API_CALL mk_env_init(const config *cfg) {
 }
 
 API_EXPORT void API_CALL mk_set_option(const char *key, const char *val) {
+    assert(key && val);
     if (mINI::Instance().find(key) == mINI::Instance().end()) {
         WarnL << "key:" << key << " not existed!";
         return;
@@ -78,7 +88,7 @@ API_EXPORT void API_CALL mk_set_option(const char *key, const char *val) {
 API_EXPORT uint16_t API_CALL mk_http_server_start(uint16_t port, int ssl) {
     ssl = MAX(0,MIN(ssl,1));
     try {
-        http_server[ssl].reset(new TcpServer());
+        http_server[ssl] = std::make_shared<TcpServer>();
         if(ssl){
             http_server[ssl]->start<TcpSessionWithSSL<HttpSession> >(port);
         } else{
@@ -95,7 +105,7 @@ API_EXPORT uint16_t API_CALL mk_http_server_start(uint16_t port, int ssl) {
 API_EXPORT uint16_t API_CALL mk_rtsp_server_start(uint16_t port, int ssl) {
     ssl = MAX(0,MIN(ssl,1));
     try {
-        rtsp_server[ssl].reset(new TcpServer());
+        rtsp_server[ssl] = std::make_shared<TcpServer>();
         if(ssl){
             rtsp_server[ssl]->start<TcpSessionWithSSL<RtspSession> >(port);
         }else{
@@ -112,7 +122,7 @@ API_EXPORT uint16_t API_CALL mk_rtsp_server_start(uint16_t port, int ssl) {
 API_EXPORT uint16_t API_CALL mk_rtmp_server_start(uint16_t port, int ssl) {
     ssl = MAX(0,MIN(ssl,1));
     try {
-        rtmp_server[ssl].reset(new TcpServer());
+        rtmp_server[ssl] = std::make_shared<TcpServer>();
         if(ssl){
             rtmp_server[ssl]->start<TcpSessionWithSSL<RtmpSession> >(port);
         }else{
@@ -126,7 +136,32 @@ API_EXPORT uint16_t API_CALL mk_rtmp_server_start(uint16_t port, int ssl) {
     }
 }
 
+API_EXPORT uint16_t API_CALL mk_rtp_server_start(uint16_t port){
+#ifdef ENABLE_RTPPROXY
+    try {
+        //创建rtp tcp服务器
+        tcpRtpServer = std::make_shared<TcpServer>();
+        tcpRtpServer->start<RtpSession>(port);
+
+        //创建rtp udp服务器
+        auto ret = tcpRtpServer->getPort();
+        udpRtpServer = std::make_shared<UdpRecver>();
+        udpRtpServer->initSock(port);
+        return ret;
+    } catch (std::exception &ex) {
+        tcpRtpServer.reset();
+        udpRtpServer.reset();
+        WarnL << ex.what();
+        return 0;
+    }
+#else
+    WarnL << "未启用该功能!";
+    return 0;
+#endif
+}
+
 API_EXPORT void API_CALL mk_log_printf(int level, const char *file, const char *function, int line, const char *fmt, ...) {
+    assert(file && function && fmt);
     LogContextCapturer info(Logger::Instance(), (LogLevel) level, file, function, line);
     va_list pArg;
     va_start(pArg, fmt);

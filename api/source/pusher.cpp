@@ -24,27 +24,26 @@
  * SOFTWARE.
  */
 
-#include "proxyplayer.h"
-#include "Player/PlayerProxy.h"
-
-using namespace toolkit;
+#include <assert.h>
+#include "pusher.h"
+#include "Pusher/MediaPusher.h"
 using namespace mediakit;
 
-API_EXPORT mk_proxy_player API_CALL mk_proxy_player_create(const char *vhost, const char *app, const char *stream, int hls_enabled, int mp4_enabled) {
-    assert(vhost && app && stream);
-    PlayerProxy::Ptr *obj(new PlayerProxy::Ptr(new PlayerProxy(vhost, app, stream, true, true, hls_enabled, mp4_enabled)));
-    return (mk_proxy_player) obj;
+API_EXPORT mk_pusher API_CALL mk_pusher_create(const char *schema,const char *vhost,const char *app, const char *stream){
+    assert(schema && vhost && app && schema);
+    MediaPusher::Ptr *obj = new MediaPusher::Ptr(new MediaPusher(schema,vhost,app,stream));
+    return obj;
 }
 
-API_EXPORT void API_CALL mk_proxy_player_release(mk_proxy_player ctx) {
+API_EXPORT void API_CALL mk_pusher_release(mk_pusher ctx){
     assert(ctx);
-    PlayerProxy::Ptr *obj = (PlayerProxy::Ptr *) ctx;
+    MediaPusher::Ptr *obj = (MediaPusher::Ptr *)ctx;
     delete obj;
 }
 
-API_EXPORT void API_CALL mk_proxy_player_set_option(mk_proxy_player ctx, const char *key, const char *val){
+API_EXPORT void API_CALL mk_pusher_set_option(mk_pusher ctx, const char *key, const char *val){
     assert(ctx && key && val);
-    PlayerProxy::Ptr &obj = *((PlayerProxy::Ptr *) ctx);
+    MediaPusher::Ptr &obj = *((MediaPusher::Ptr *)ctx);
     string key_str(key),val_str(val);
     obj->getPoller()->async([obj,key_str,val_str](){
         //切换线程再操作
@@ -52,12 +51,34 @@ API_EXPORT void API_CALL mk_proxy_player_set_option(mk_proxy_player ctx, const c
     });
 }
 
-API_EXPORT void API_CALL mk_proxy_player_play(mk_proxy_player ctx, const char *url) {
+API_EXPORT void API_CALL mk_pusher_publish(mk_pusher ctx,const char *url){
     assert(ctx && url);
-    PlayerProxy::Ptr &obj = *((PlayerProxy::Ptr *) ctx);
+    MediaPusher::Ptr &obj = *((MediaPusher::Ptr *)ctx);
     string url_str(url);
     obj->getPoller()->async([obj,url_str](){
         //切换线程再操作
-        obj->play(url_str);
+        obj->publish(url_str);
+    });
+}
+
+API_EXPORT void API_CALL mk_pusher_set_on_result(mk_pusher ctx, on_mk_push_event cb, void *user_data){
+    assert(ctx && cb);
+    MediaPusher::Ptr &obj = *((MediaPusher::Ptr *)ctx);
+    obj->getPoller()->async([obj,cb,user_data](){
+        //切换线程再操作
+        obj->setOnPublished([cb,user_data](const SockException &ex){
+            cb(user_data,ex.getErrCode(),ex.what());
+        });
+    });
+}
+
+API_EXPORT void API_CALL mk_pusher_set_on_shutdown(mk_pusher ctx, on_mk_push_event cb, void *user_data){
+    assert(ctx && cb);
+    MediaPusher::Ptr &obj = *((MediaPusher::Ptr *)ctx);
+    obj->getPoller()->async([obj,cb,user_data](){
+        //切换线程再操作
+        obj->setOnShutdown([cb,user_data](const SockException &ex){
+            cb(user_data,ex.getErrCode(),ex.what());
+        });
     });
 }

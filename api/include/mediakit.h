@@ -1,4 +1,4 @@
-/*
+﻿/*
  * MIT License
  *
  * Copyright (c) 2019 xiongziliang <771730766@qq.com>
@@ -32,5 +32,7 @@
 #include "media.h"
 #include "proxyplayer.h"
 #include "flvrecorder.h"
+#include "player.h"
+#include "pusher.h"
 
 #endif /* MK_API_H_ */

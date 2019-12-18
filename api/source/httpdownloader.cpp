@@ -1,4 +1,4 @@
-/*
+﻿/*
  * MIT License
  *
  * Copyright (c) 2019 xiongziliang <771730766@qq.com>
@@ -26,8 +26,6 @@
 #include "httpdownloader.h"
 
 #include "Util/logger.h"
-#include "Util/TimeTicker.h"
-#include "Util/onceToken.h"
 #include "Http/HttpDownloader.h"
 using namespace std;
 using namespace toolkit;
@@ -39,11 +37,13 @@ API_EXPORT mk_http_downloader API_CALL mk_http_downloader_create() {
 }
 
 API_EXPORT void API_CALL mk_http_downloader_release(mk_http_downloader ctx) {
+    assert(ctx);
     HttpDownloader::Ptr *obj = (HttpDownloader::Ptr *) ctx;
     delete obj;
 }
 
-API_EXPORT void API_CALL mk_http_downloader_start(mk_http_downloader ctx, const char *url, const char *file, on_download_complete cb, void *user_data) {
+API_EXPORT void API_CALL mk_http_downloader_start(mk_http_downloader ctx, const char *url, const char *file, on_mk_download_complete cb, void *user_data) {
+    assert(ctx && url && file);
     HttpDownloader::Ptr *obj = (HttpDownloader::Ptr *) ctx;
     (*obj)->setOnResult([cb, user_data](ErrCode code, const string &errMsg, const string &filePath) {
         if (cb) {

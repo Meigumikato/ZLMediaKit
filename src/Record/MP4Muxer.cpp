@@ -129,6 +129,10 @@ void MP4Muxer::addTrack(const Track::Ptr &track) {
                 WarnL << "不是AAC Track";
                 return;
             }
+            if(!aac_track->ready()){
+                WarnL << "AAC Track未就绪";
+                return;
+            }
             auto track_id = mov_writer_add_audio(_mov_writter.get(),
                                                  MOV_OBJECT_AAC,
                                                  aac_track->getAudioChannel(),
@@ -148,8 +152,12 @@ void MP4Muxer::addTrack(const Track::Ptr &track) {
                 WarnL << "不是H264 Track";
                 return;
             }
+            if(!h264_track->ready()){
+                WarnL << "H264 Track未就绪";
+                return;
+            }
 
-            struct mpeg4_avc_t avc;
+			struct mpeg4_avc_t avc = {0};
             string sps_pps = string("\x00\x00\x00\x01", 4) + h264_track->getSps() +
                              string("\x00\x00\x00\x01", 4) + h264_track->getPps();
             h264_annexbtomp4(&avc, sps_pps.data(), sps_pps.size(), NULL, 0, NULL, NULL);
@@ -181,8 +189,12 @@ void MP4Muxer::addTrack(const Track::Ptr &track) {
                 WarnL << "不是H265 Track";
                 return;
             }
+            if(!h265_track->ready()){
+                WarnL << "H265 Track未就绪";
+                return;
+            }
 
-            struct mpeg4_hevc_t hevc;
+			struct mpeg4_hevc_t hevc = {0};
             string vps_sps_pps = string("\x00\x00\x00\x01", 4) + h265_track->getVps() +
                                  string("\x00\x00\x00\x01", 4) + h265_track->getSps() +
                                  string("\x00\x00\x00\x01", 4) + h265_track->getPps();
