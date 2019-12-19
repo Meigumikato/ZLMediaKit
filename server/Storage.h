@@ -35,13 +35,14 @@ private:
     string ip;
     unsigned short port;
     int timeout;
-    Storage(){};
-    void connect();
 public:
-    Storage(string ip, unsigned short port, int timeout);
+    Storage(){};
+    void connect(string ip, unsigned short port, int timeout_sec = 10000);
     string hGet(string key, string filed);
     list<string> hGet(string key);
     void hSet(string key, string filed, string value);
+
+    static Storage &Instance();
 };
 
 #endif //ZLMEDIAKIT_STORAGE_H

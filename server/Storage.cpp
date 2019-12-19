@@ -6,14 +6,11 @@
 
 using namespace toolkit;
 
-Storage::Storage(string ip, unsigned short port, int timeout_sec) {
+void Storage::connect(string ip, unsigned short port, int timeout_sec) {
     this->ip = ip;
     this->port = port;
     this->timeout = timeout_sec;
-    connect();
-}
 
-void Storage::connect() {
     struct timeval t = {timeout};
     mRedisContext = redisConnectWithTimeout((const char*) ip.c_str(), port, t);
 
@@ -50,5 +47,10 @@ void Storage::hSet(string key, string filed, string value) {
     if(mRedisReply == NULL || mRedisReply->type != REDIS_REPLY_STATUS || strcasecmp(mRedisReply->str,"OK") == 0) {
         throw RedisException(("run cmd error : " + cmd).c_str(), REDIS::CMD_RUN_ERROR);
     }
+}
+
+Storage & Storage::Instance() {
+    static Storage instance;
+    return instance;
 }
 
