@@ -336,7 +336,6 @@ void System::startDaemon() {
                     kill(pid,SIGINT);
                     exit(0);
                 }
-                WarnL << "子进程退出 : " << _WSTATUS(status);
                 //休眠1秒再启动子进程
                 sleep(1);
                 break;

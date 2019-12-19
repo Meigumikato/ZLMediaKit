@@ -8,6 +8,7 @@ brew install faac
 brew install mp4v2
 brew install sdl
 brew install ffmpeg
+brew install libhiredis-dev
 
 mkdir -p mac_build
 rm -rf ./build
