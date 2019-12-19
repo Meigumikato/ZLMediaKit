@@ -45,6 +45,7 @@
 #include "Rtp/UdpRecver.h"
 #include "WebApi.h"
 #include "WebHook.h"
+#include "Storage.h"
 
 #if !defined(_WIN32)
 #include<unistd.h>
@@ -322,6 +323,8 @@ int start_main(int argc,char *argv[]) {
             tcpRtpServer->start<RtpSession>(rtp_proxy);
 #endif//defined(ENABLE_RTPPROXY)
 
+            Storage::Instance().connect("127.0.0.1", 6379);
+
         }catch (std::exception &ex){
             WarnL << "端口占用或无权限:" << ex.what() << endl;
             ErrorL << "程序启动失败，请修改配置文件中端口号后重试!" << endl;
@@ -338,6 +341,12 @@ int start_main(int argc,char *argv[]) {
         InfoL << "已启动http api 接口";
         installWebHook();
         InfoL << "已启动http hook 接口";
+
+        try {
+            recoverAllMedia();
+        } catch (std::exception &ex){
+            WarnL<<"恢复流媒体失败或者没有流可以恢复 " << ex.what();
+        }
 
 #if !defined(_WIN32) && !defined(ANDROID)
         if (!bDaemon) {

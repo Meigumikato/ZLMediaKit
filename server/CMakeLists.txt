@@ -1,6 +1,7 @@
 ﻿include_directories(../3rdpart)
 file(GLOB jsoncpp_src_list ../3rdpart/jsoncpp/*.cpp ../3rdpart/jsoncpp/*.h )
 add_library(jsoncpp STATIC ${jsoncpp_src_list})
+LINK_DIRECTORIES(/usr/local/lib)
 
 
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")

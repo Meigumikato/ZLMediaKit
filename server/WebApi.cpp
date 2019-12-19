@@ -33,6 +33,7 @@
 #include "Util/logger.h"
 #include "Util/onceToken.h"
 #include "Util/NoticeCenter.h"
+#include "Storage.h"
 #ifdef ENABLE_MYSQL
 #include "Util/SqlPool.h"
 #endif //ENABLE_MYSQL
@@ -273,6 +274,46 @@ static inline string getProxyKey(const string &vhost,const string &app,const str
 static map<string ,FFmpegSource::Ptr> s_ffmpegMap;
 static recursive_mutex s_ffmpegMapMtx;
 #endif//#if !defined(_WIN32)
+
+void addFFmpegSourceOut(const string &src_url, const string &dst_url, int timeout_ms, bool needConvert, const function<void(const SockException &ex,const string &key)> &cb){
+    auto key = MD5(dst_url).hexdigest();
+    lock_guard<decltype(s_ffmpegMapMtx)> lck(s_ffmpegMapMtx);
+    if(s_ffmpegMap.find(key) != s_ffmpegMap.end()){
+        //已经在拉流了
+        cb(SockException(Err_success),key);
+        return;
+    }
+
+    FFmpegSource::Ptr ffmpeg = std::make_shared<FFmpegSource>();
+    s_ffmpegMap[key] = ffmpeg;
+
+    ffmpeg->setOnClose([key](){
+        lock_guard<decltype(s_ffmpegMapMtx)> lck(s_ffmpegMapMtx);
+        s_ffmpegMap.erase(key);
+    });
+    ffmpeg->play(src_url, dst_url,timeout_ms, needConvert, [cb , key, src_url, dst_url, needConvert, timeout_ms](const SockException &ex){
+        if(ex){
+            lock_guard<decltype(s_ffmpegMapMtx)> lck(s_ffmpegMapMtx);
+            s_ffmpegMap.erase(key);
+        }
+        cb(ex,key);
+    });
+};
+
+void recoverAllMedia() {
+    list<Value> medias = Storage::Instance().hGet("ffmpeg");
+    for(Value value : medias) {
+        WarnL<<"恢复流媒体: "<<value.toStyledString();
+        const string src = value["src"].asString();
+        const string dst = value["dst"].asString();
+        const string key = value["key"].asString();
+        bool needConvert = value["needConvert"].asBool();
+        int timeout = value["timeout"].asInt();
+        addFFmpegSourceOut(src, dst, timeout, needConvert, [](const SockException &ex,const string &key){
+            ErrorL<<"addFFmpegSourceOut error msg "<< ex.what();
+        });
+    }
+}
 
 /**
  * 安装api接口
@@ -666,11 +707,18 @@ void installWebApi() {
             lock_guard<decltype(s_ffmpegMapMtx)> lck(s_ffmpegMapMtx);
             s_ffmpegMap.erase(key);
         });
-        ffmpeg->play(src_url, dst_url,timeout_ms, needConvert, [cb , key](const SockException &ex){
+        ffmpeg->play(src_url, dst_url,timeout_ms, needConvert, [cb , key, src_url, dst_url, needConvert, timeout_ms](const SockException &ex){
             if(ex){
                 lock_guard<decltype(s_ffmpegMapMtx)> lck(s_ffmpegMapMtx);
                 s_ffmpegMap.erase(key);
             }
+            Value ffmpegValue;
+            ffmpegValue["dst"] = dst_url;
+            ffmpegValue["src"] = src_url;
+            ffmpegValue["key"] = key;
+            ffmpegValue["timeout"] = timeout_ms;
+            ffmpegValue["needConvert"] = needConvert;
+            Storage::Instance().hSet("ffmpeg", key, ffmpegValue);
             cb(ex,key);
         });
     };

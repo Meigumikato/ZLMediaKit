@@ -8,6 +8,9 @@
 #include <hiredis/hiredis.h>
 #include <iostream>
 #include <list>
+#include "jsoncpp/json.h"
+
+using namespace Json;
 using namespace::std;
 
 namespace REDIS {
@@ -38,11 +41,29 @@ private:
 public:
     Storage(){};
     void connect(string ip, unsigned short port, int timeout_sec = 10000);
-    string hGet(string key, string filed);
-    list<string> hGet(string key);
-    void hSet(string key, string filed, string value);
+    list<Value> hGet(string key);
+    void hSet(string key, string filed, Value value);
 
     static Storage &Instance();
+};
+
+class RedisReplay {
+private:
+    redisReply *reply;
+public:
+    RedisReplay(redisReply* reply) {
+        this->reply = reply;
+    }
+
+    redisReply * getReply() {
+        return reply;
+    }
+
+    ~RedisReplay() {
+        if(reply != NULL) {
+            freeReplyObject(reply);
+        }
+    }
 };
 
 #endif //ZLMEDIAKIT_STORAGE_H

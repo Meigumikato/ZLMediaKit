@@ -47,6 +47,7 @@ extern const string kPort;
 
 void installWebApi();
 void unInstallWebApi();
+void recoverAllMedia();
 //配置文件路径
 extern string g_ini_file;
 

@@ -2,7 +2,8 @@
 // Created by oujiangping on 2019/12/19.
 //
 #include "Storage.h"
-#include "Util/util.h"
+#include "Util/logger.h"
+#include "Util//base64.h"
 
 using namespace toolkit;
 
@@ -17,35 +18,36 @@ void Storage::connect(string ip, unsigned short port, int timeout_sec) {
     if(NULL == mRedisContext || mRedisContext->err) {
         throw RedisException("connect to redis error", REDIS::CONNECT_ERROR);
     }
+    InfoL << "连接Redis 成功";
 }
 
-string Storage::hGet(string key, string filed) {
-    string cmd = StrPrinter << "HGET " << key << " " << filed;
-    redisReply *mRedisReply = (redisReply*) redisCommand(mRedisContext, (const char*) cmd.c_str());
-    if(mRedisReply == NULL || mRedisReply->type != REDIS_REPLY_STRING) {
-        throw RedisException(("run cmd error : " + cmd).c_str(), REDIS::CMD_RUN_ERROR);
+list<Value> Storage::hGet(string key) {
+    redisReply *mRedisReply = (redisReply*) redisCommand(mRedisContext, "HVALS %s", key.c_str());
+    auto reply = make_shared<RedisReplay>(mRedisReply);
+    if(reply->getReply() == NULL || reply->getReply()->type != REDIS_REPLY_ARRAY) {
+        throw RedisException(("HVALS error key : " + key).c_str(), REDIS::CMD_RUN_ERROR);
     }
-    return mRedisReply->str;
-}
-
-list<string> Storage::hGet(string key) {
-    string cmd = StrPrinter << "HGET " << key;
-    redisReply *mRedisReply = (redisReply*) redisCommand(mRedisContext, (const char*) cmd.c_str());
-    if(mRedisReply == NULL || mRedisReply->type != REDIS_REPLY_ARRAY) {
-        throw RedisException(("run cmd error : " + cmd).c_str(), REDIS::CMD_RUN_ERROR);
-    }
-    list<string> mList;
+    list<Value> mList;
+    Reader reader;
     for(std::size_t i = 0; i < mRedisReply->elements; i++) {
-        mList.push_back(mRedisReply->element[i]->str);
+        Value value;
+        if(reader.parse(decodeBase64(reply->getReply()->element[i]->str), value)) {
+            WarnL<<"parse ok "<< value.toStyledString();
+            value["src"].isInt();
+        }
+        mList.push_back(value);
     }
     return mList;
 }
 
-void Storage::hSet(string key, string filed, string value) {
-    string cmd = StrPrinter << "HSET " << key << " " << filed << " " << value;
-    redisReply *mRedisReply = (redisReply*) redisCommand(mRedisContext, (const char*) cmd.c_str());
-    if(mRedisReply == NULL || mRedisReply->type != REDIS_REPLY_STATUS || strcasecmp(mRedisReply->str,"OK") == 0) {
-        throw RedisException(("run cmd error : " + cmd).c_str(), REDIS::CMD_RUN_ERROR);
+void Storage::hSet(string key, string filed, Value value) {
+    Json::StreamWriterBuilder builder;
+    const std::string val = Json::writeString(builder, value);
+    
+    redisReply *mRedisReply = (redisReply*) redisCommand(mRedisContext, "HSET %s %s %s", key.c_str(), filed.c_str(), encodeBase64(val).c_str());
+    auto reply = make_shared<RedisReplay>(mRedisReply);
+    if(reply->getReply() == NULL || reply->getReply()->type != REDIS_REPLY_INTEGER) {
+        throw RedisException(("redis set value error : " + val).c_str(), REDIS::CMD_RUN_ERROR);
     }
 }
 
