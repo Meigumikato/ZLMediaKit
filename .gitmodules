@@ -4,3 +4,6 @@
 [submodule "3rdpart/media-server"]
 	path = 3rdpart/media-server
 	url = https://gitee.com/xiahcu/media-server
+[submodule "3rdpart/redis-plus-plus"]
+	path = 3rdpart/redis-plus-plus
+	url = https://github.com/sewenew/redis-plus-plus.git

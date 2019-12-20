@@ -196,4 +196,6 @@ if (NOT IOS)
     add_subdirectory(tests)
     #主服务器
     add_subdirectory(server)
+
+    add_subdirectory(3rdpart/redis-plus-plus)
 endif ()
