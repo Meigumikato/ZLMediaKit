@@ -5,11 +5,12 @@
 #ifndef ZLMEDIAKIT_STORAGE_H
 #define ZLMEDIAKIT_STORAGE_H
 
-#include <hiredis/hiredis.h>
 #include <iostream>
 #include <list>
 #include "jsoncpp/json.h"
+#include <sw/redis++/redis++.h>
 
+using namespace sw::redis;
 using namespace Json;
 using namespace::std;
 
@@ -34,10 +35,10 @@ private:
 
 class Storage {
 private:
-    redisContext *mRedisContext;
     string ip;
     unsigned short port;
     int timeout;
+    Redis getRedis();
 public:
     Storage(){};
     void connect(string ip, unsigned short port, int timeout_sec = 10000);
@@ -45,25 +46,6 @@ public:
     void hSet(string key, string filed, Value value);
     void hDel(string key, string filed);
     static Storage &Instance();
-};
-
-class RedisReplay {
-private:
-    redisReply *reply;
-public:
-    RedisReplay(redisReply* reply) {
-        this->reply = reply;
-    }
-
-    redisReply * getReply() {
-        return reply;
-    }
-
-    ~RedisReplay() {
-        if(reply != NULL) {
-            freeReplyObject(reply);
-        }
-    }
 };
 
 #endif //ZLMEDIAKIT_STORAGE_H

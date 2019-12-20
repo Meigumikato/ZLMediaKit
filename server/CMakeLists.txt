@@ -1,4 +1,4 @@
-﻿include_directories(../3rdpart)
+﻿include_directories(../3rdpart ../3rdpart/redis-plus-plus/src/)
 file(GLOB jsoncpp_src_list ../3rdpart/jsoncpp/*.cpp ../3rdpart/jsoncpp/*.h )
 add_library(jsoncpp STATIC ${jsoncpp_src_list})
 LINK_DIRECTORIES(/usr/local/lib)
@@ -18,6 +18,6 @@ if(WIN32)
 	set_target_properties(MediaServer PROPERTIES COMPILE_FLAGS  ${VS_FALGS} )
 endif()
 
-target_link_libraries(MediaServer jsoncpp hiredis ${LINK_LIB_LIST})
+target_link_libraries(MediaServer jsoncpp hiredis redis++ ${LINK_LIB_LIST})
 
 
