@@ -51,6 +51,14 @@ void Storage::hSet(string key, string filed, Value value) {
     }
 }
 
+
+void Storage::hDel(string key, string filed) {
+    redisReply *mRedisReply = (redisReply*) redisCommand(mRedisContext, "HDEL %s %s", key.c_str(), filed.c_str());
+    auto reply = make_shared<RedisReplay>(mRedisReply);
+    if(reply->getReply() == NULL || reply->getReply()->type != REDIS_REPLY_INTEGER) {
+        throw RedisException(("redis set value error : " + filed).c_str(), REDIS::CMD_RUN_ERROR);
+    }
+}
 Storage & Storage::Instance() {
     static Storage instance;
     return instance;

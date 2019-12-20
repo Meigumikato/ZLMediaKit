@@ -43,7 +43,7 @@ public:
     void connect(string ip, unsigned short port, int timeout_sec = 10000);
     list<Value> hGet(string key);
     void hSet(string key, string filed, Value value);
-
+    void hDel(string key, string filed);
     static Storage &Instance();
 };
 

@@ -290,11 +290,13 @@ void addFFmpegSourceOut(const string &src_url, const string &dst_url, int timeou
     ffmpeg->setOnClose([key](){
         lock_guard<decltype(s_ffmpegMapMtx)> lck(s_ffmpegMapMtx);
         s_ffmpegMap.erase(key);
+        Storage::Instance().hDel("ffmpeg", key);
     });
     ffmpeg->play(src_url, dst_url,timeout_ms, needConvert, [cb , key, src_url, dst_url, needConvert, timeout_ms](const SockException &ex){
         if(ex){
             lock_guard<decltype(s_ffmpegMapMtx)> lck(s_ffmpegMapMtx);
             s_ffmpegMap.erase(key);
+            Storage::Instance().hDel("ffmpeg", key);
         }
         cb(ex,key);
     });
@@ -310,7 +312,9 @@ void recoverAllMedia() {
         bool needConvert = value["needConvert"].asBool();
         int timeout = value["timeout"].asInt();
         addFFmpegSourceOut(src, dst, timeout, needConvert, [](const SockException &ex,const string &key){
-            ErrorL<<"addFFmpegSourceOut error msg "<< ex.what();
+            if(ex) {
+                ErrorL << "addFFmpegSourceOut error msg " << ex.what();
+            }
         });
     }
 }
@@ -706,11 +710,13 @@ void installWebApi() {
         ffmpeg->setOnClose([key](){
             lock_guard<decltype(s_ffmpegMapMtx)> lck(s_ffmpegMapMtx);
             s_ffmpegMap.erase(key);
+            Storage::Instance().hDel("ffmpeg", key);
         });
         ffmpeg->play(src_url, dst_url,timeout_ms, needConvert, [cb , key, src_url, dst_url, needConvert, timeout_ms](const SockException &ex){
             if(ex){
                 lock_guard<decltype(s_ffmpegMapMtx)> lck(s_ffmpegMapMtx);
                 s_ffmpegMap.erase(key);
+                Storage::Instance().hDel("ffmpeg", key);
             }
             Value ffmpegValue;
             ffmpegValue["dst"] = dst_url;
@@ -763,8 +769,10 @@ void installWebApi() {
     static auto api_delFFmpegSource = [](API_ARGS,const HttpSession::HttpResponseInvoker &invoker){
         CHECK_SECRET();
         CHECK_ARGS("key");
+        string key = allArgs["key"];
         lock_guard<decltype(s_ffmpegMapMtx)> lck(s_ffmpegMapMtx);
         val["data"]["flag"] = s_ffmpegMap.erase(allArgs["key"]) == 1;
+        Storage::Instance().hDel("ffmpeg", key);
     };
 
     //关闭拉流代理
