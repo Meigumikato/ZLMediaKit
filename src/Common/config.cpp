@@ -177,7 +177,7 @@ const string kHandshakeSecond = RTMP_FIELD"handshakeSecond";
 const string kKeepAliveSecond = RTMP_FIELD"keepAliveSecond";
 
 onceToken token([](){
-	mINI::Instance()[kModifyStamp] = true;
+	mINI::Instance()[kModifyStamp] = false;
     mINI::Instance()[kHandshakeSecond] = 15;
     mINI::Instance()[kKeepAliveSecond] = 15;
 },nullptr);
@@ -267,8 +267,8 @@ const string kFileBufSize = HLS_FIELD"fileBufSize";
 const string kFilePath = HLS_FIELD"filePath";
 
 onceToken token([](){
-	mINI::Instance()[kSegmentDuration] = 2;
-	mINI::Instance()[kSegmentNum] = 3;
+	mINI::Instance()[kSegmentDuration] = 5;
+	mINI::Instance()[kSegmentNum] = 5;
 	mINI::Instance()[kSegmentRetain] = 5;
 	mINI::Instance()[kFileBufSize] = 64 * 1024;
 	mINI::Instance()[kFilePath] = "./httpRoot";
