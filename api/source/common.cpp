@@ -35,6 +35,7 @@
 #include "Rtsp/RtspSession.h"
 #include "Rtmp/RtmpSession.h"
 #include "Http/HttpSession.h"
+#include "Shell/ShellSession.h"
 using namespace std;
 using namespace toolkit;
 using namespace mediakit;
@@ -42,36 +43,67 @@ using namespace mediakit;
 static TcpServer::Ptr rtsp_server[2];
 static TcpServer::Ptr rtmp_server[2];
 static TcpServer::Ptr http_server[2];
+static TcpServer::Ptr shell_server;
 
 #ifdef ENABLE_RTPPROXY
 #include "Rtp/UdpRecver.h"
 #include "Rtp/RtpSession.h"
 static std::shared_ptr<UdpRecver> udpRtpServer;
-static TcpServer::Ptr tcpRtpServer(new TcpServer());
+static TcpServer::Ptr tcpRtpServer;
 #endif
 
 //////////////////////////environment init///////////////////////////
 API_EXPORT void API_CALL mk_env_init(const mk_config *cfg) {
     assert(cfg);
+    mk_env_init1(cfg->thread_num,
+                 cfg->log_level,
+                 cfg->ini_is_path,
+                 cfg->ini,
+                 cfg->ssl_is_path,
+                 cfg->ssl,
+                 cfg->ssl_pwd);
+}
+
+API_EXPORT void API_CALL mk_stop_all_server(){
+    CLEAR_ARR(rtsp_server);
+    CLEAR_ARR(rtmp_server);
+    CLEAR_ARR(http_server);
+    udpRtpServer = nullptr;
+    tcpRtpServer = nullptr;
+}
+
+API_EXPORT void API_CALL mk_env_init1(  int thread_num,
+                                        int log_level,
+                                        int ini_is_path,
+                                        const char *ini,
+                                        int ssl_is_path,
+                                        const char *ssl,
+                                        const char *ssl_pwd) {
+
     static onceToken token([&]() {
-        Logger::Instance().add(std::make_shared<ConsoleChannel>("console", (LogLevel) cfg->log_level));
+        Logger::Instance().add(std::make_shared<ConsoleChannel>("console", (LogLevel) log_level));
         Logger::Instance().setWriter(std::make_shared<AsyncLogWriter>());
 
-        EventPollerPool::setPoolSize(cfg->thread_num);
-        WorkThreadPool::setPoolSize(cfg->thread_num);
+        EventPollerPool::setPoolSize(thread_num);
+        WorkThreadPool::setPoolSize(thread_num);
 
-        if (cfg->ini) {
+        if (ini && ini[0]) {
             //设置配置文件
-            if (cfg->ini_is_path) {
-                mINI::Instance().parseFile(cfg->ini);
+            if (ini_is_path) {
+                try{
+                    mINI::Instance().parseFile(ini);
+                }catch (std::exception &ex) {
+                    InfoL << "dump ini file to:" << ini;
+                    mINI::Instance().dumpFile(ini);
+                }
             } else {
-                mINI::Instance().parse(cfg->ini);
+                mINI::Instance().parse(ini);
             }
         }
 
-        if (cfg->ssl) {
+        if (ssl && ssl[0]) {
             //设置ssl证书
-            SSL_Initor::Instance().loadCertificate(cfg->ssl, true, cfg->ssl_pwd ? cfg->ssl_pwd : "", cfg->ssl_is_path);
+            SSL_Initor::Instance().loadCertificate(ssl, true, ssl_pwd ? ssl_pwd : "", ssl_is_path);
         }
     });
 }
@@ -158,6 +190,18 @@ API_EXPORT uint16_t API_CALL mk_rtp_server_start(uint16_t port){
     WarnL << "未启用该功能!";
     return 0;
 #endif
+}
+
+API_EXPORT uint16_t API_CALL mk_shell_server_start(uint16_t port){
+    try {
+        shell_server =  std::make_shared<TcpServer>();
+        shell_server->start<ShellSession>(port);
+        return shell_server->getPort();
+    } catch (std::exception &ex) {
+        shell_server.reset();
+        WarnL << ex.what();
+        return 0;
+    }
 }
 
 API_EXPORT void API_CALL mk_log_printf(int level, const char *file, const char *function, int line, const char *fmt, ...) {

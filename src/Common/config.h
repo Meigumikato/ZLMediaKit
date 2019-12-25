@@ -69,11 +69,11 @@ namespace Broadcast {
 
 //注册或反注册MediaSource事件广播
 extern const string kBroadcastMediaChanged;
-#define BroadcastMediaChangedArgs const bool &bRegist, const string &schema,const string &vhost,const string &app,const string &stream,MediaSource &sender
+#define BroadcastMediaChangedArgs const bool &bRegist, MediaSource &sender
 
 //MediaSource重置Track事件
 extern const string kBroadcastMediaResetTracks;
-#define BroadcastMediaResetTracksArgs const string &schema,const string &vhost,const string &app,const string &stream,MediaSource &sender
+#define BroadcastMediaResetTracksArgs MediaSource &sender
 
 //录制mp4文件成功后广播
 extern const string kBroadcastRecordMP4;
@@ -83,9 +83,14 @@ extern const string kBroadcastRecordMP4;
 extern const string kBroadcastHttpRequest;
 #define BroadcastHttpRequestArgs const Parser &parser,const HttpSession::HttpResponseInvoker &invoker,bool &consumed,TcpSession &sender
 
-//收到http 访问文件或目录的广播，通过该事件控制访问http目录的权限
+//在http文件服务器中,收到http访问文件或目录的广播,通过该事件控制访问http目录的权限
 extern const string kBroadcastHttpAccess;
 #define BroadcastHttpAccessArgs const Parser &parser,const MediaInfo &args,const string &path,const bool &is_dir,const HttpSession::HttpAccessPathInvoker &invoker,TcpSession &sender
+
+//在http文件服务器中,收到http访问文件或目录前的广播,通过该事件可以控制http url到文件路径的映射
+//在该事件中通过自行覆盖path参数，可以做到譬如根据虚拟主机或者app选择不同http根目录的目的
+extern const string kBroadcastHttpBeforeAccess;
+#define BroadcastHttpBeforeAccessArgs const Parser &parser,const MediaInfo &args,string &path,TcpSession &sender
 
 //该流是否需要认证？是的话调用invoker并传入realm,否则传入空的realm.如果该事件不监听则不认证
 extern const string kBroadcastOnGetRtspRealm;

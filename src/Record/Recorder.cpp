@@ -217,25 +217,27 @@ public:
 
 private:
     MediaSourceWatcher(){
-        NoticeCenter::Instance().addListener(this,Broadcast::kBroadcastMediaChanged,[this](BroadcastMediaChangedArgs){
+        //保存NoticeCenter的强引用，防止在MediaSourceWatcher单例释放前释放NoticeCenter单例
+        _notice_center = NoticeCenter::Instance().shared_from_this();
+        _notice_center->addListener(this,Broadcast::kBroadcastMediaChanged,[this](BroadcastMediaChangedArgs){
             if(bRegist){
-                onRegist(schema,vhost,app,stream,sender);
+                onRegist(sender);
             }else{
-                onUnRegist(schema,vhost,app,stream,sender);
+                onUnRegist(sender);
             }
         });
-        NoticeCenter::Instance().addListener(this,Broadcast::kBroadcastMediaResetTracks,[this](BroadcastMediaResetTracksArgs){
-            onRegist(schema,vhost,app,stream,sender);
+        _notice_center->addListener(this,Broadcast::kBroadcastMediaResetTracks,[this](BroadcastMediaResetTracksArgs){
+            onRegist(sender);
         });
     }
 
     ~MediaSourceWatcher(){
-        NoticeCenter::Instance().delListener(this,Broadcast::kBroadcastMediaChanged);
-        NoticeCenter::Instance().delListener(this,Broadcast::kBroadcastMediaResetTracks);
+        _notice_center->delListener(this,Broadcast::kBroadcastMediaChanged);
+        _notice_center->delListener(this,Broadcast::kBroadcastMediaResetTracks);
     }
 
-    void onRegist(const string &schema,const string &vhost,const string &app,const string &stream,MediaSource &sender){
-        auto key = getRecorderKey(vhost,app,stream);
+    void onRegist(MediaSource &sender){
+        auto key = getRecorderKey(sender.getVhost(),sender.getApp(),sender.getId());
         lock_guard<decltype(_recorder_mtx)> lck(_recorder_mtx);
         auto it = _recorder_map.find(key);
         if(it == _recorder_map.end()){
@@ -243,20 +245,20 @@ private:
             return;
         }
 
-        if(!it->second->isRecording() || it->second->getSchema() == schema){
+        if(!it->second->isRecording() || it->second->getSchema() == sender.getSchema()){
             // 绑定的协议一致或者并未正在录制则替换tracks
             auto tracks = sender.getTracks(true);
             if (!tracks.empty()) {
-                it->second->attachTracks(std::move(tracks),schema);
+                it->second->attachTracks(std::move(tracks),sender.getSchema());
             }
         }
     }
 
-    void onUnRegist(const string &schema,const string &vhost,const string &app,const string &stream,MediaSource &sender){
-        auto key = getRecorderKey(vhost,app,stream);
+    void onUnRegist(MediaSource &sender){
+        auto key = getRecorderKey(sender.getVhost(),sender.getApp(),sender.getId());
         lock_guard<decltype(_recorder_mtx)> lck(_recorder_mtx);
         auto it = _recorder_map.find(key);
-        if(it == _recorder_map.end() || it->second->getSchema() != schema){
+        if(it == _recorder_map.end() || it->second->getSchema() != sender.getSchema()){
             // 录像记录不存在或绑定的协议不一致
             return;
         }
@@ -320,6 +322,7 @@ private:
     }
 private:
     recursive_mutex _recorder_mtx;
+    NoticeCenter::Ptr _notice_center;
     unordered_map<string, RecorderHelper::Ptr> _recorder_map;
 };
 

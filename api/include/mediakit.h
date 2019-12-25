@@ -31,8 +31,9 @@
 #include "httpdownloader.h"
 #include "media.h"
 #include "proxyplayer.h"
-#include "flvrecorder.h"
+#include "recorder.h"
 #include "player.h"
 #include "pusher.h"
+#include "events.h"
 
 #endif /* MK_API_H_ */
